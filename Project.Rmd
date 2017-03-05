@@ -22,6 +22,8 @@ for(i in 1:1000) {
 }
 ```
 
+### Show the sample mean and compare it to the theoretical mean of the distribution
+
 We can then plot the histogram of the means.  The mean of the distribution of means should trend toward the mean of the original distribution, which is 1/lamba = 1/0.2 = 5 for this distrubution.  
 
 Theoretical mean:
@@ -41,6 +43,9 @@ hist(mean_expos, xlab = "Sample mean", main = "Distribution of sample means")
 abline(v = 1/lambda, col = "red", lwd = 6)
 ```
 
+
+### Show how variable the sample is (via variance) and compare it to the theoretical variance of the distribution
+
 The variance of the sample means is given by
 ``` {r}
 var(mean_expos)
@@ -49,6 +54,18 @@ While the theoretical variance is given by the variance of the original distribu
 ``` {r}
 ((1/lambda)^2)/(n)
 ```
+There is some difference between the experimental variance of the means and the theoretical value. When the square root is taken to change the variance into the more common standard deviation, the nearness of the values is more apparent.
+  
+Standard deviation of sample means:
+``` {r}
+sd(mean_expos)
+```
+Theortical standard deviation of the means of the exponential distribution:
+``` {r}
+(1/lambda)/sqrt(n)
+```
+  
+### Show that the distribution is approximately normal  
 
 Finally, it can be shown that the resulting distribution of means is approximately normal by plotting the histogram of sample means against a normal distribution with the theoretical mean and standard deviation.
 ``` {r}
@@ -60,3 +77,79 @@ lines(x,y, col = "blue")
 The resulting close fit follows from the central limit thereom, which states the distribution of a sufficiently large number of means of any sample will trend towards a normal distribution with mean = mean(original distribution) and sd = sd(original distribution)/(number of samples in each set)
 
 # Project Part 2: Inferential Data Analysis
+
+In this section of the project, the goal is to explore the `ToothGrowth` dataset.
+
+### Exploration of ToothGrowth data
+
+We begin by loading the data and exploring some characteristics of it.  We first examine the overall structure of the data. 
+``` {r}
+data("ToothGrowth")
+
+str(ToothGrowth)
+```
+We can see that the data comprises 60 observations, each containing a numerical length value (`len`), an indicator of supplement type (`sup`) with two values (`OJ` = orange juice and `VC` = ascorbic acide), and a numerical value for supplement doseage (`dose`).  
+We next look at the first and last values of the data to get an idea of the values.
+``` {r}
+head(ToothGrowth)
+tail(ToothGrowth)
+```
+From the values shown, it is apparent that `len` is a continuous measurement but there are discrete values for `dose`, so we look at the values that `dose` can take.
+``` {r}
+unique(ToothGrowth$dose)
+```
+Given the discrete levels of `dose`, it is converted to a factor for ease of further analysis.
+``` {r}
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
+```
+
+### Summary of the data
+
+First, we use a box plot of tooth length by dose for each supplement to show the overall shape of the data
+``` {r}
+par(mfcol = c(1,2))
+boxplot(len ~ dose, data=ToothGrowth, subset= (supp == "OJ"),
+		main = "Orange Juice", xlab = "Dose (mg/day)", ylab = "Tooth Length (a.u.?)", ylim = c(5, 35))
+boxplot(len ~ dose, data=ToothGrowth, subset= (supp == "VC"),
+		main = "Ascorbic Acid", xlab = "Dose (mg/day)", ylim = c(5,35))
+```
+
+### Hypothesis testing
+
+
+There are two basic questions that can be addressed from this data set:
+1. Does the type of supplement affect the tooth length?
+2. Does the dose within each supplement affect the tooth length?
+
+We first consider the hypothesis that the mean tooth growth values are not equal for the two supplements.  Based on the above box plot, the variability of the two supplements are quite different, so an unequal variance t-test is conducted.
+``` {r}
+t.test(len ~ supp, data=ToothGrowth)
+```
+As can be seen, the confidence interval includes zero, so we cannot reject the null hypothesis at 95% confidence.
+We can also test for a difference between the supplements at each individual doseage.
+``` {r}
+t.test(len ~ supp, data=ToothGrowth, subset = dose == 0.5)
+t.test(len ~ supp, data=ToothGrowth, subset = dose == 1.0)
+t.test(len ~ supp, data=ToothGrowth, subset = dose == 2.0)
+```
+For the two lower doses, 0.5 and 1.0, the 95% confidence interval does not include, but the 2.0 dose does include zero.
+
+Finally, we can test for a doseage effect within each supplement, which is done by comparing each doseage to the one below it. First, for orange juice:
+``` {r}
+t.test(len ~ dose, data=ToothGrowth, subset = dose %in% c(0.5, 1.0) & supp == "OJ")
+t.test(len ~ dose, data=ToothGrowth, subset = dose %in% c(1.0, 2.0) & supp == "OJ")
+```
+
+And then for ascorbic acid:
+``` {r}
+t.test(len ~ dose, data=ToothGrowth, subset = dose %in% c(0.5, 1.0) & supp == "VC")
+t.test(len ~ dose, data=ToothGrowth, subset = dose %in% c(1.0, 2.0) & supp == "VC")
+```
+For each supplement, the confidence does not include zero for either of the dose comparisons.
+
+### Conclusions and necessary assumptions
+Hypothesis testing using the t-distribution shows that we can reject the null hypothesis that dose has no effect on mean tooth growth with 95% confidence for both supplements.
+
+The results show that we can reject the null hypothesis that there is no difference between the two supplements for doseage values of 0.5 and 1.0 mg/day, but we cannot reject it for the 2.0 mg/day set or for the overall data.  This seems to indicate that orange juice is a better promotor of tooth growth at low doseages, but further investigation is warranted.  
+
+These conclusions rest on the assumptions that the sampled data are representative of their populations as a whole, and that the data generally follow a symmetrical t-distribution.
